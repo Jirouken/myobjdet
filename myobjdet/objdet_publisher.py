@@ -3,7 +3,7 @@ from rclpy.node import Node
 
 from std_msgs.msg import String
 
-from detect import ObjDet
+import detect
 
 
 class ObjDetPublisher(Node):
@@ -12,7 +12,7 @@ class ObjDetPublisher(Node):
         super().__init__('objdet_publisher')
         self.publisher_ = self.create_publisher(String, 'objdet', 10)
         timer_period = 0.5
-        self.objdet = ObjDet()
+        self.objdet = detect.ObjDet()
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
 
@@ -35,5 +35,5 @@ def main(args=None):
     rclpy.shutdown()
 
 
-if __name__ = '__main__':
+if __name__ == '__main__':
     main()

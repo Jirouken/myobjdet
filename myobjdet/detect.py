@@ -70,7 +70,7 @@ class ObjDet():
         if self.cap.isOpened():
             ret, frame = self.cap.read()
             if not ret:
-                break
+                pass
             cv2_im = frame
             cv2_im_rgb = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
             cv2_im_rgb = cv2.resize(cv2_im_rgb, self.inference_size)
@@ -78,9 +78,6 @@ class ObjDet():
             objs = get_objects(self.interpreter, self.threshold)[:self.top_k]
 
             return get_label_score(objs, self.labels)
-
-        else:
-            break
 
     def __del__(self):
         self.cap.release()
