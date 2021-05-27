@@ -36,56 +36,51 @@ from pycoral.utils.dataset import read_label_file
 from pycoral.utils.edgetpu import make_interpreter
 from pycoral.utils.edgetpu import run_inference
 
-def main():
-    default_model_dir = 'model'
-    default_model = 'mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite'
-    default_labels = 'coco_labels.txt'
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', help='.tflite model path',
-                        default=os.path.join(default_model_dir,default_model))
-    parser.add_argument('--labels', help='label file path',
-                        default=os.path.join(default_model_dir, default_labels))
-    parser.add_argument('--top_k', type=int, default=3,
-                        help='number of categories with highest score to display')
-    parser.add_argument('--camera_idx', type=int, help='Index of which video source to use. ', default = 0)
-    parser.add_argument('--threshold', type=float, default=0.1,
-                        help='classifier score threshold')
-    args = parser.parse_args()
 
-    print('Loading {} with {} labels.'.format(args.model, args.labels))
-    interpreter = make_interpreter(args.model)
-    interpreter.allocate_tensors()
-    labels = read_label_file(args.labels)
-    inference_size = input_size(interpreter)
+class ObjDet():
+    def __init__(self):
+        default_model_dir = 'model'
+        default_model = 'mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite'
+        default_labels = 'coco_labels.txt'    
 
-    cap = cv2.VideoCapture(args.camera_idx)
+        self.model = os.path.join(default_model_dir,default_model)
+        self.labels = os.path.join(default_model_dir, default_labels)
+        self.camera_idx = 0
+        self.top_k = 3
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
+        print('Loading {} with {} labels.'.format(self.model, self.labels))
+        self.interpreter = make_interpreter(self.model)
+        self.interpreter.allocate_tensors()
+        self.labels = read_label_file(self.labels)
+        self.inference_size = input_size(self.interpreter)
+        self.threshold = 0.1
+
+        self.cap = cv2.VideoCapture(self.camera_idx)
+
+    def get_label_score(self, objs):
+        if len(objs) >= 1:
+            percent = int(100 * objs[0].score)
+            label = '{}% {}'.format(percent, self.labels.get(objs[0].id, objs[0].id))
+        else:
+            percent = '--'
+            label = '{}% {}'.format(percent, 'None')
+        return label
+
+    def detect(self):
+        if self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if not ret:
+                break
+            cv2_im = frame
+            cv2_im_rgb = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
+            cv2_im_rgb = cv2.resize(cv2_im_rgb, self.inference_size)
+            run_inference(self.interpreter, cv2_im_rgb.tobytes())
+            objs = get_objects(self.interpreter, self.threshold)[:self.top_k]
+
+            return get_label_score(objs, self.labels)
+
+        else:
             break
-        cv2_im = frame
 
-        cv2_im_rgb = cv2.cvtColor(cv2_im, cv2.COLOR_BGR2RGB)
-        cv2_im_rgb = cv2.resize(cv2_im_rgb, inference_size)
-        run_inference(interpreter, cv2_im_rgb.tobytes())
-        objs = get_objects(interpreter, args.threshold)[:args.top_k]
-        cv2_im = append_objs_to_img(cv2_im, inference_size, objs, labels)
-
-        print(get_label_score(objs, labels))
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-
-def get_label_score(objs, labels):
-    if len(objs) >= 1:
-        percent = int(100 * objs[0].score)
-        label = '{}% {}'.format(percent, labels.get(objs[0].id, objs[0].id))
-    else:
-        percent = '--'
-        label = '{}% {}'.format(percent, 'None')
-    return label
-
-if __name__ == '__main__':
-    main()
+    def __del__(self):
+        self.cap.release()

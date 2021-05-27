@@ -3,6 +3,8 @@ from rclpy.node import Node
 
 from std_msgs.msg import String
 
+from detect import ObjDet
+
 
 class ObjDetPublisher(Node):
 
@@ -10,13 +12,16 @@ class ObjDetPublisher(Node):
         super().__init__('objdet_publisher')
         self.publisher_ = self.create_publisher(String, 'objdet', 10)
         timer_period = 0.5
+        self.objdet = ObjDet()
         self.timer = self.create_timer(timer_period, self.timer_callback)
+        
 
     def timer_callback(self):
         msg = String()
-        msg.data = 'detect result'
+        msg.data = self.objdet.detect()
+
         self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: %s' % msg.data)
+        self.get_logger().info('%s' % msg.data)
 
 def main(args=None):
     rclpy.init(args=args)
@@ -26,6 +31,7 @@ def main(args=None):
     rclpy.spin(object_publisher)
 
     object_publisher.destroy_node()
+    del object_publisher
     rclpy.shutdown()
 
 
