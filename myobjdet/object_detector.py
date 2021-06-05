@@ -12,25 +12,32 @@ from pycoral.utils.edgetpu import make_interpreter
 from pycoral.utils.edgetpu import run_inference
 
 
-class ObjDetPublisher(Node):
+class ObjectDetector(Node):
 
     def __init__(self):
-        super().__init__('objdet_publisher')
+        super().__init__('object_detector')
         self.objdet = ObjDet()
-        self.subscription = self.create_subscription(
+        self.create_subscription(
             Image,
             '/image_raw',
-            self.callback,
-            # lambda msg: self.get_logger().info('catch :"%s"' % msg.data),
+            self.cb_sub,
             10)
-        self.subscription
+        self.publisher_ = self.create_publisher(String, "object_label", 10)
+        timer_period = 0.5
+        self.timer = self.create_timer(timer_period, self.cb_pub)
+        self.msg_ = None
 
-    def callback(self, msg):
+    def cb_sub(self, msg):
+        self.msg_ = msg
+
+    def cb_pub(self):
         try:
             bridge = CvBridge()
-            img = bridge.imgmsg_to_cv2(msg, "bgr8")
-            res = self.objdet.detect(img)
-            self.get_logger().info("detected: %s" % res)
+            img = bridge.imgmsg_to_cv2(self.msg_, "bgr8")
+            res = self.objdet.detect(img)        
+            msg = String()
+            msg.data = res
+            self.publisher_.publish(msg)
         except Exception as err:
             self.get_logger().info("err")
 
@@ -74,7 +81,7 @@ class ObjDet():
 
 def main(args=None):
     rclpy.init(args=args)
-    show_subscriber = ObjDetPublisher()
+    show_subscriber = ObjectDetector()
     rclpy.spin(show_subscriber)
     show_subscriber.destroy_node()
     rclpy.shutdown()

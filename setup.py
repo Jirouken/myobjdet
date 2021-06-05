@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'objdet_publisher = myobjdet.objdet_publisher:main',
+            'object_detector = myobjdet.object_detector:main',
+            'object_subscriber = myobjdet.object_subscriber:main'
         ],
     },
 )
